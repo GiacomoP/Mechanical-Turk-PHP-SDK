@@ -64,13 +64,14 @@ print_r($balance->toArray());
  * after the very first API call you'll make through its methods, since that's
  * the only way to know it.
  */
-$wid = "A3D9BS7QW6ORGG";
+$wid = 'A3D9BS7QW6ORGG';
 $worker = new Worker($wid);
 try {
-    $worker->block('After several warnings, he continued to submit answers '
+    $success = $worker->block('After several warnings, he continued to submit answers '
                  . 'without reading the instructions carefully.');
 } catch (RequestException $re) {
     // There was a request-level error!
 } catch (OperationResultException $oe) {
     // There was an operation-level error!
 }
+var_dump($success);
