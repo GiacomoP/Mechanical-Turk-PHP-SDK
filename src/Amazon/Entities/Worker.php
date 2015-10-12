@@ -81,9 +81,31 @@ class Worker extends AbstractEntity {
      * to populate its properties.
      *
      * @TODO
+     *
+     * @return bool Returns 'true' on success. False when the Worker couldn't be found.
      */
     public function fetch() {
-        // Use private cache methods to look for the Worker in the available collections.
+        if (!$this->id) {
+            return false;
+        }
+
+        // Check existence in the blocked Workers collection
+        try {
+            $worker = self::cacheWorkerBlock($this->id);
+        } catch (\Exception $e) {
+            return false;
+        }
+        if ($worker instanceof Worker) {
+            $this->validated = true;
+            $this->blocked = $worker->isBlocked();
+            $this->blockReason = $worker->getBlockReason();
+
+            return true;
+        }
+
+        /** @TODO Add checks to other containers (e.g. past HITs etc...) */
+
+        return false;
     }
 
     /**
@@ -217,6 +239,8 @@ class Worker extends AbstractEntity {
     /**
      * Returns if the Worker has been validated already or not.
      *
+     * A validated Worker means the Worker has worked for the Account before.
+     *
      * @return bool
      */
     public function isValidated() {
@@ -229,11 +253,11 @@ class Worker extends AbstractEntity {
      * @return bool
      *
      * @throws InvalidStateException If the Worker hasn't been validated and the
-     *      block state is thus unknown, or not cached yet.
+     * block state is thus unknown, or not cached yet.
      */
     public function isBlocked() {
-        if (!$this->validated) {
-            throw new InvalidStateException('The Worker object has never been '
+        if (!$this->validated || !is_bool($this->blocked)) {
+            throw new InvalidStateException('The Worker object has not been '
                                           . 'synced with Amazon API, the block state is unknown.');
         } else {
             return $this->blocked;
@@ -249,8 +273,8 @@ class Worker extends AbstractEntity {
      * it's not blocked.
      */
     public function getBlockReason() {
-        if (!$this->validated) {
-            throw new InvalidStateException('The Worker object has never been '
+        if (!$this->validated || !is_bool($this->blocked)) {
+            throw new InvalidStateException('The Worker object has not been '
                                           . 'synced with Amazon API, the block state is unknown.');
         } elseif (!$this->blocked) {
             throw new InvalidStateException('The Worker has not been blocked, impossible to return a reason.');
