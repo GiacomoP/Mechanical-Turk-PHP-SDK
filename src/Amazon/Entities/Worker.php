@@ -180,30 +180,11 @@ class Worker extends AbstractEntity {
      *
      * @return bool Returns 'true' on success.
      *
-     * @throws \InvalidArgumentException    If length constraints are not respected.
      * @throws OperationResultException     If the Worker has never worked for the Account.
+     * @throws \InvalidArgumentException    If $subject and $message are not valid.
      */
     public function sendMessage($subject, $message) {
-        $maxConstraints = array(
-            'subject' => 200,
-            'message' => 4096
-        );
-
-        if (strlen($subject) < 1) {
-            throw new \InvalidArgumentException('The subject of the message must '
-                                              . 'be longer than 1 character.');
-        } elseif (strlen($subject) > $maxConstraints['subject']) {
-            throw new \InvalidArgumentException('The subject of the message can '
-                                              . "contain max {$maxConstraints['subject']} characters.");
-        }
-
-        if (strlen($message) < 1) {
-            throw new \InvalidArgumentException('The subject of the message must '
-                                              . 'be longer than 1 character.');
-        } elseif (strlen($message) > $maxConstraints['message']) {
-            throw new \InvalidArgumentException('The subject of the message can '
-                                              . "contain max {$maxConstraints['message']} characters.");
-        }
+        $this->validateMessage($subject, $message);
 
         $operationName = Operations::NOTIFY_WORKERS;
         $operationResultName = OperationResults::NOTIFY_WORKERS_RESULT;
@@ -329,6 +310,97 @@ class Worker extends AbstractEntity {
         } while ($request->hasNextPage());
 
         return $workers;
+    }
+
+    /**
+     * Sends a message to multiple Workers in one API call.
+     *
+     * @param Worker[]  $workers An array of maximum 100 Workers.
+     * @param string    $subject The subject for the notification email.
+     * @param string    $message The message. HTML markup is not allowed.
+     *
+     * @return bool|array Returns 'true' on success for all Workers. Returns an
+     * array of error messages with the respective Worker ID as key otherwise.
+     *
+     * @throws \InvalidArgumentException If $subject and $message are not valid,
+     * or there were more than 100 Workers to notify.
+     * @throws OperationResultException
+     * @throws RequestException
+     */
+    public static function sendBulkMessage(array $workers, $subject, $message) {
+        self::validateMessage($subject, $message);
+        if (count($workers) > 100) {
+            throw new \InvalidArgumentException('$workers expects maximum 100 Workers');
+        }
+
+        $operationName = Operations::NOTIFY_WORKERS;
+        $operationResultName = OperationResults::NOTIFY_WORKERS_RESULT;
+        $data = array(
+            'Subject' => $subject,
+            'MessageText' => $message
+        );
+
+        $i = 0;
+        foreach ($workers as $worker) {
+            $i++;
+            $data["WorkerId.{$i}"] = $worker->getId();
+        }
+
+        $request = new Request($operationName, $data);
+        /** @var \SimpleXMLElement $operationResult */
+        $operationResult = $request->execute()->retrieveResult($operationResultName);
+
+        $fails = array();
+        if ($operationResult instanceof \SimpleXMLElement
+            && property_exists($operationResult, 'NotifyWorkersFailureStatus')) {
+            foreach ($operationResult->NotifyWorkersFailureStatus as $failure) {
+                $wId = (string) $failure->WorkerId;
+                $fails[$wId] = (string) $failure->NotifyWorkersFailureMessage;
+            }
+        }
+
+        foreach ($workers as $worker) {
+            $worker->validated = !array_key_exists($worker->getId(), $fails);
+        }
+
+        if (count($fails)) {
+            return $fails;
+        }
+        return $operationResult;
+    }
+
+    /**
+     * Validates a message to send Workers.
+     *
+     * @param string $subject
+     * @param string $message
+     *
+     * @return boolean Returns 'true' on success.
+     *
+     * @throws \InvalidArgumentException If length constraints are not respected.
+     */
+    private static function validateMessage($subject, $message) {
+        $maxConstraints = array(
+            'subject' => 200,
+            'message' => 4096
+        );
+
+        if (strlen($subject) < 1) {
+            throw new \InvalidArgumentException('The subject of the message must '
+                                              . 'be longer than 1 character.');
+        } elseif (strlen($subject) > $maxConstraints['subject']) {
+            throw new \InvalidArgumentException('The subject of the message can '
+                                              . "contain max {$maxConstraints['subject']} characters.");
+        }
+
+        if (strlen($message) < 1) {
+            throw new \InvalidArgumentException('$message must be longer than 1 character.');
+        } elseif (strlen($message) > $maxConstraints['message']) {
+            throw new \InvalidArgumentException('$message must contain max '
+                                              . "{$maxConstraints['message']} characters.");
+        }
+
+        return true;
     }
 
     /**
