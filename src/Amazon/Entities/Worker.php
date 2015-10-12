@@ -101,7 +101,7 @@ class Worker extends AbstractEntity {
      * @throws RequestException
      */
     public function block($reason) {
-        if (count($reason) < 1) {
+        if (strlen($reason) < 1) {
             throw new \InvalidArgumentException('The reason to block the worker must be longer than 1 character.');
         }
         $operationName = Operations::BLOCK_WORKER;
