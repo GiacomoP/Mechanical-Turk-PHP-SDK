@@ -151,6 +151,61 @@ class Worker extends AbstractEntity {
     }
 
     /**
+     * Sends a notification message to the Worker.
+     *
+     * @param string $subject The subject for the notification email.
+     * @param string $message The message. HTML markup is not allowed.
+     *
+     * @return bool Returns 'true' on success.
+     *
+     * @throws \InvalidArgumentException    If length constraints are not respected.
+     * @throws OperationResultException     If the Worker has never worked for the Account.
+     */
+    public function sendMessage($subject, $message) {
+        $maxConstraints = array(
+            'subject' => 200,
+            'message' => 4096
+        );
+
+        if (strlen($subject) < 1) {
+            throw new \InvalidArgumentException('The subject of the message must '
+                                              . 'be longer than 1 character.');
+        } elseif (strlen($subject) > $maxConstraints['subject']) {
+            throw new \InvalidArgumentException('The subject of the message can '
+                                              . "contain max {$maxConstraints['subject']} characters.");
+        }
+
+        if (strlen($message) < 1) {
+            throw new \InvalidArgumentException('The subject of the message must '
+                                              . 'be longer than 1 character.');
+        } elseif (strlen($message) > $maxConstraints['message']) {
+            throw new \InvalidArgumentException('The subject of the message can '
+                                              . "contain max {$maxConstraints['message']} characters.");
+        }
+
+        $operationName = Operations::NOTIFY_WORKERS;
+        $operationResultName = OperationResults::NOTIFY_WORKERS_RESULT;
+        $data = array(
+            'WorkerId.1' => $this->id,
+            'Subject' => $subject,
+            'MessageText' => $message
+        );
+
+        $request = new Request($operationName, $data);
+        /** @var \SimpleXMLElement $operationResult */
+        $operationResult = $request->execute()->retrieveResult($operationResultName);
+
+        if ($operationResult === true) {
+            $this->validated = true;
+        } elseif (property_exists($operationResult, 'NotifyWorkersFailureStatus')) {
+            $reason = $operationResult->NotifyWorkersFailureStatus->NotifyWorkersFailureMessage;
+            throw new OperationResultException("It was impossible to send the message: {$reason}");
+        }
+
+        return $operationResult;
+    }
+
+    /**
      * Returns the Worker's Id.
      *
      * @return string

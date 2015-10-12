@@ -41,5 +41,6 @@ abstract class OperationResults {
     const BLOCK_WORKER_RESULT = 'BlockWorkerResult';
     const UNBLOCK_WORKER_RESULT = 'UnblockWorkerResult';
     const GET_BLOCKED_WORKERS_RESULT = 'GetBlockedWorkersResult';
+    const NOTIFY_WORKERS_RESULT = 'NotifyWorkersResult';
     /**#@-*/
 }

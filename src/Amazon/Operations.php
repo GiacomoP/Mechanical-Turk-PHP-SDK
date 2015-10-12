@@ -41,5 +41,6 @@ abstract class Operations {
     const BLOCK_WORKER = 'BlockWorker';
     const UNBLOCK_WORKER = 'UnblockWorker';
     const GET_BLOCKED_WORKERS = 'GetBlockedWorkers';
+    const NOTIFY_WORKERS = 'NotifyWorkers';
     /**#@-*/
 }
