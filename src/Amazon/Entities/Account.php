@@ -51,7 +51,7 @@ class Account extends AbstractEntity {
         $operationResultName = OperationResults::GET_ACCOUNT_BALANCE_RESULT;
 
         $request = new Request($operationName);
-        /** @var \SimpleXMLElement $operationResult */
+        /** @var \SimpleXMLElement|bool $operationResult */
         $operationResult = $request->execute()->retrieveResult($operationResultName);
 
         return Price::parseFromXml($operationResult->AvailableBalance);

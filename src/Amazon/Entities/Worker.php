@@ -134,7 +134,7 @@ class Worker extends AbstractEntity {
         );
 
         $request = new Request($operationName, $data);
-        /** @var \SimpleXMLElement $operationResult */
+        /** @var \SimpleXMLElement|bool $operationResult */
         $operationResult = $request->execute()->retrieveResult($operationResultName);
 
         $this->validated = true;
@@ -164,7 +164,7 @@ class Worker extends AbstractEntity {
         );
 
         $request = new Request($operationName, $data);
-        /** @var \SimpleXMLElement $operationResult */
+        /** @var \SimpleXMLElement|bool $operationResult */
         $operationResult = $request->execute()->retrieveResult($operationResultName);
 
         $this->validated = true;
@@ -195,12 +195,13 @@ class Worker extends AbstractEntity {
         );
 
         $request = new Request($operationName, $data);
-        /** @var \SimpleXMLElement $operationResult */
+        /** @var \SimpleXMLElement|bool $operationResult */
         $operationResult = $request->execute()->retrieveResult($operationResultName);
 
         if ($operationResult === true) {
             $this->validated = true;
-        } elseif (property_exists($operationResult, 'NotifyWorkersFailureStatus')) {
+        } elseif ($operationResult instanceof \SimpleXMLElement
+                  && property_exists($operationResult, 'NotifyWorkersFailureStatus')) {
             $reason = $operationResult->NotifyWorkersFailureStatus->NotifyWorkersFailureMessage;
             throw new OperationResultException("It was impossible to send the message: {$reason}");
         }
@@ -347,7 +348,7 @@ class Worker extends AbstractEntity {
         }
 
         $request = new Request($operationName, $data);
-        /** @var \SimpleXMLElement $operationResult */
+        /** @var \SimpleXMLElement|bool $operationResult */
         $operationResult = $request->execute()->retrieveResult($operationResultName);
 
         $fails = array();
